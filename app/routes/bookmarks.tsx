@@ -1,10 +1,10 @@
 import type { Route } from "./+types/bookmarks";
 import { Form, useActionData, Link, Outlet } from "react-router";
-import { getBookmarks, addBookmark, deleteBookmark, toggleFavorite } from "~/lib/api.server";
+import { getBookmarks, addBookmark, deleteBookmark } from "~/lib/api.server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Bookmark, ExternalLink, Trash2, Star } from "lucide-react";
+import { Bookmark, ExternalLink, Trash2 } from "lucide-react";
 import { useForm, getFormProps, getInputProps } from "@conform-to/react";
 import { parseWithZod } from "@conform-to/zod";
 import { z } from "zod";
@@ -20,23 +20,12 @@ const deleteBookmarkSchema = z.object({
   id: z.string().min(1, "Bookmark ID is required"),
 });
 
-const favoriteBookmarkSchema = z.object({
-  intent: z.literal("favorite"),
-  id: z.string().min(1, "Bookmark ID is required"),
-});
-
 // ============================================
 // LOADER: Fetch bookmarks from API
 // ============================================
 export async function loader() {
   const bookmarks = await getBookmarks();
-  // Sort favorites to the top
-  const sorted = bookmarks.sort((a, b) => {
-    if (a.isFavorite && !b.isFavorite) return -1;
-    if (!a.isFavorite && b.isFavorite) return 1;
-    return 0;
-  });
-  return { bookmarks: sorted };
+  return { bookmarks };
 }
 
 // ============================================
@@ -63,14 +52,6 @@ export async function action({ request }: Route.ActionArgs) {
       return submission.reply();
     }
     await deleteBookmark(submission.value.id);
-  }
-
-  if (intent === "favorite") {
-    const submission = parseWithZod(formData, { schema: favoriteBookmarkSchema });
-    if (submission.status !== "success") {
-      return submission.reply();
-    }
-    await toggleFavorite(submission.value.id);
   }
 
   return null;
@@ -164,19 +145,6 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
                     </a>
                   </CardDescription>
                 </div>
-                <Form method="post">
-                  <input type="hidden" name="intent" value="favorite" />
-                  <input type="hidden" name="id" value={bookmark.id} />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    className={bookmark.isFavorite ? "text-yellow-500 hover:text-yellow-600" : "text-muted-foreground hover:text-yellow-500"}
-                  >
-                    <Star className={`w-4 h-4 ${bookmark.isFavorite ? "fill-current" : ""}`} />
-                    <span className="sr-only">Toggle favorite</span>
-                  </Button>
-                </Form>
                 <Form method="post">
                   <input type="hidden" name="intent" value="delete" />
                   <input type="hidden" name="id" value={bookmark.id} />
