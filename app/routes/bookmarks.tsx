@@ -1,8 +1,19 @@
 import type { Route } from "./+types/bookmarks";
-import { Link, Outlet } from "react-router";
-import { getBookmarks } from "~/lib/api.server";
-import { Card, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Form, useActionData, Link, Outlet } from "react-router";
+import { getBookmarks, addBookmark } from "~/lib/api.server";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Bookmark, ExternalLink } from "lucide-react";
+import { useForm, getFormProps, getInputProps } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod";
+import { z } from "zod";
+
+const addBookmarkSchema = z.object({
+  intent: z.literal("add"),
+  title: z.string().min(1, "Title is required"),
+  url: z.string().url("Please enter a valid URL"),
+});
 
 // ============================================
 // LOADER: Fetch bookmarks from API
@@ -18,9 +29,22 @@ export async function loader() {
 // Like BloC handling AddBookmark / DeleteBookmark events
 // ============================================
 export async function action({ request }: Route.ActionArgs) {
-  // TODO: Get formData and intent
-  // TODO: Handle "add" intent
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+
+  if (intent === "add") {
+    const submission = parseWithZod(formData, { schema: addBookmarkSchema });
+    if (submission.status !== "success") {
+      return submission.reply();
+    }
+    await addBookmark({
+      title: submission.value.title,
+      url: submission.value.url,
+    });
+  }
+
   // TODO: Handle "delete" intent
+
   return null;
 }
 
@@ -30,12 +54,59 @@ export async function action({ request }: Route.ActionArgs) {
 // ============================================
 export default function Bookmarks({ loaderData }: Route.ComponentProps) {
   const { bookmarks } = loaderData;
+  const lastResult = useActionData<typeof action>();
+
+  const [form, fields] = useForm({
+    lastResult,
+    onValidate({ formData }) {
+      return parseWithZod(formData, { schema: addBookmarkSchema });
+    },
+    shouldValidate: "onBlur",
+    shouldRevalidate: "onInput",
+  });
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <h1 className="text-4xl font-bold mb-8">QuickMarks</h1>
 
-      {/* TODO: Add bookmark form */}
+      {/* Add Bookmark Form */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Add New Bookmark</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form method="post" {...getFormProps(form)} className="space-y-4">
+            <input type="hidden" name="intent" value="add" />
+            <div>
+              <label htmlFor={fields.title.id} className="text-sm font-medium block mb-1">
+                Title
+              </label>
+              <Input
+                {...getInputProps(fields.title, { type: "text" })}
+                placeholder="My favorite resource"
+              />
+              {fields.title.errors && (
+                <p className="text-sm text-destructive mt-1">{fields.title.errors}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor={fields.url.id} className="text-sm font-medium block mb-1">
+                URL
+              </label>
+              <Input
+                {...getInputProps(fields.url, { type: "url" })}
+                placeholder="https://example.com"
+              />
+              {fields.url.errors && (
+                <p className="text-sm text-destructive mt-1">{fields.url.errors}</p>
+              )}
+            </div>
+            <Button type="submit" className="w-full">
+              Save Bookmark
+            </Button>
+          </Form>
+        </CardContent>
+      </Card>
 
       {/* Bookmark List */}
       {bookmarks.length === 0 ? (
