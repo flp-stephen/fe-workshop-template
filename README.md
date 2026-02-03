@@ -94,6 +94,57 @@ interface Bookmark {
 }
 ```
 
+## Handling Forms
+
+React Router uses **actions** to handle form submissions. Here's the pattern:
+
+### 1. Create an action function
+
+```ts
+// In your route file (e.g., bookmarks.tsx)
+export async function action({ request }: Route.ActionArgs) {
+  const formData = await request.formData();
+  const title = formData.get("title") as string;
+  const url = formData.get("url") as string;
+
+  // Validate
+  if (!title) {
+    return { errors: { title: "Title is required" } };
+  }
+
+  // Call API
+  await addBookmark({ title, url });
+  return { success: true };
+}
+```
+
+### 2. Use the Form component
+
+```tsx
+import { Form, useActionData } from "react-router";
+
+export default function MyRoute() {
+  const actionData = useActionData<typeof action>();
+
+  return (
+    <Form method="post">
+      <input name="title" type="text" />
+      {actionData?.errors?.title && (
+        <p className="text-destructive">{actionData.errors.title}</p>
+      )}
+      <button type="submit">Save</button>
+    </Form>
+  );
+}
+```
+
+### Key Points
+
+- `Form` with `method="post"` submits to the route's `action`
+- `useActionData()` returns whatever the action returned
+- After a successful action, the `loader` re-runs automatically
+- Use hidden inputs for extra data: `<input type="hidden" name="intent" value="delete" />`
+
 ## Falling Behind?
 
 If you get stuck, you can checkout a checkpoint branch:
