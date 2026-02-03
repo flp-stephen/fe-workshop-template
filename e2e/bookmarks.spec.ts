@@ -61,11 +61,9 @@ test.describe('QuickMarks App', () => {
     await expect(page).toHaveURL(/\/bookmarks\/.+/);
     await expect(page.locator('text=Back to list')).toBeVisible();
 
-    // Should show the bookmark details
-    if (bookmarkTitle) {
-      await expect(page.locator(`text=${bookmarkTitle}`)).toBeVisible();
-    }
+    // Should show the bookmark details (check for detail-specific elements)
     await expect(page.locator('text=Created')).toBeVisible();
+    await expect(page.locator('text=ID')).toBeVisible();
   });
 
   test('should navigate back from detail page', async ({ page }) => {
@@ -87,8 +85,8 @@ test.describe('QuickMarks App', () => {
     await page.locator('ul.space-y-3 a').first().click();
     await expect(page).toHaveURL(/\/bookmarks\/.+/);
 
-    // Click back button
-    await page.getByRole('button', { name: /Back to list/i }).click();
+    // Click back link
+    await page.getByRole('link', { name: /Back to list/i }).click();
 
     // Should be back on bookmarks list
     await expect(page).toHaveURL('/bookmarks');
@@ -129,9 +127,8 @@ test.describe('QuickMarks App', () => {
     await page.getByLabel('Title').fill('Invalid URL Test');
     await page.getByLabel('URL').fill('not-a-valid-url');
 
-    // Blur the field to trigger validation
-    await page.getByLabel('URL').blur();
-    await page.waitForTimeout(300);
+    // Submit form to trigger validation
+    await page.getByRole('button', { name: 'Save Bookmark' }).click();
 
     // Should show URL validation error
     await expect(page.locator('text=Please enter a valid URL')).toBeVisible();

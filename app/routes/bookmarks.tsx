@@ -66,10 +66,14 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
 
   const [form, fields] = useForm({
     lastResult,
+    defaultValue: {
+      title: "",
+      url: "",
+    },
     onValidate({ formData }) {
       return parseWithZod(formData, { schema: addBookmarkSchema });
     },
-    shouldValidate: "onBlur",
+    shouldValidate: "onSubmit",
     shouldRevalidate: "onInput",
   });
 
